@@ -1,7 +1,5 @@
 # GoSTM
 
-This is an optimistic Software Transactional Memory prototype in Golang.
+This is an optimistic quarantined Software Transactional Memory implementation in Golang.
 
-Still a WIP. Basic tests are passing.
-
-- Sid
+* Sid

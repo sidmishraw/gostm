@@ -29,67 +29,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// main.go
+// tvar.go
 // @author Sidharth Mishra
-// @created Thu Mar 29 2018 00:21:30 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 19:39:35 GMT-0700 (PDT)
+// @created Thu Mar 29 2018 00:48:50 GMT-0700 (PDT)
+// @last-modified Fri Mar 30 2018 19:36:45 GMT-0700 (PDT)
 //
 
-package main
+package stm
 
-import (
-	"fmt"
-	"log"
-
-	"github.com/sidmishraw/gostm/account"
-	"github.com/sidmishraw/gostm/stm"
-)
-
-func main() {
-	STM := stm.New()
-
-	acc1 := STM.NewTVar(account.NewAccount("account1", 100))
-	acc2 := STM.NewTVar(account.NewAccount("account2", 500))
-
-	t := STM.NewTransaction(func(t *stm.Transaction) bool {
-		log.Println("Started execution of action ...")
-		defer log.Println("Finished execution action ...")
-
-		tacc1 := t.Read(acc1)
-		tacc2 := t.Read(acc2)
-
-		log.Println("tacc1 = ", tacc1)
-		log.Println("tacc2 = ", tacc2)
-
-		a1 := tacc1.(account.Account) // get the actual account 1 instance
-		a2 := tacc2.(account.Account) // get the actual account 2 instance
-
-		log.Println("a1 = ", a1)
-		log.Println("a2 = ", a2)
-
-		a1.Amt = a1.Amt + 100 // deposit 100
-		a2.Amt = a2.Amt - 100 // withdraw 100
-
-		log.Println("After a1 = ", a1)
-		log.Println("After a2 = ", a2)
-
-		return t.Write(acc1, a1) && t.Write(acc2, a2)
-	})
-
-	t.Execute()
-
-	var k int
-	fmt.Scan(&k)
-
-	tLog := STM.NewTransaction(func(t *stm.Transaction) bool {
-
-		log.Println("TLog :: acc1 = ", t.Read(acc1).(account.Account))
-		log.Println("TLog :: acc2 = ", t.Read(acc2).(account.Account))
-
-		return true
-	})
-
-	tLog.Execute()
-
-	fmt.Scan(&k)
-}
+// TVar is the transactional variable. It is an empty interface that is used as
+// the reference to memory cells by the end consumer. This is to prevent the consumer
+// from directly modifying the contents of the memory cells.
+type TVar interface{}

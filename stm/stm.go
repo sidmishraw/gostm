@@ -29,67 +29,58 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// main.go
+// stm.go
 // @author Sidharth Mishra
-// @created Thu Mar 29 2018 00:21:30 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 19:39:35 GMT-0700 (PDT)
+// @created Thu Mar 29 2018 00:22:14 GMT-0700 (PDT)
+// @last-modified Mon Apr 02 2018 18:08:53 GMT-0700 (PDT)
 //
 
-package main
+package stm
 
 import (
-	"fmt"
-	"log"
-
-	"github.com/sidmishraw/gostm/account"
-	"github.com/sidmishraw/gostm/stm"
+	"sync"
 )
 
-func main() {
-	STM := stm.New()
+// STM is the single shared memory store that can only be modified by transactions.
+type STM struct {
+	memory     []*memoryCell // the collection of memory cells makes up the memory
+	commitLock *sync.Mutex   // the commit lock needed for maintaining consistency -- serializability
+}
 
-	acc1 := STM.NewTVar(account.NewAccount("account1", 100))
-	acc2 := STM.NewTVar(account.NewAccount("account2", 500))
+// New makes and initializes a new STM instance.
+func New() (stm *STM) {
+	stm = new(STM)
+	stm.memory = make([]*memoryCell, 0, 0)
+	stm.commitLock = new(sync.Mutex)
+	return stm
+}
 
-	t := STM.NewTransaction(func(t *stm.Transaction) bool {
-		log.Println("Started execution of action ...")
-		defer log.Println("Finished execution action ...")
+// NewTVar creates a new memory cell in the STM and returns the reference
+// to the memory cell as a TVar instance.
+func (stm *STM) NewTVar(data Any) TVar {
+	memCell := newMemCell(data)
+	stm.memory = append(stm.memory, memCell)
+	return TVar(memCell)
+}
 
-		tacc1 := t.Read(acc1)
-		tacc2 := t.Read(acc2)
+// NewTransaction makes a new transaction for the given action.
+func (stm *STM) NewTransaction(action func(*Transaction) bool) *Transaction {
+	t := new(Transaction)
+	t.Version = 0
+	t.IsComplete = false
+	t.Action = action
+	t.readQuarantine = make(map[*memoryCell]Any)
+	t.writeQuarantine = make(map[*memoryCell]Any)
+	t.stm = stm
+	return t
+}
 
-		log.Println("tacc1 = ", tacc1)
-		log.Println("tacc2 = ", tacc2)
+// acquireCommitLock acquires the lock on the commit lock of this STM.
+func (stm *STM) acquireCommitLock() {
+	stm.commitLock.Lock()
+}
 
-		a1 := tacc1.(account.Account) // get the actual account 1 instance
-		a2 := tacc2.(account.Account) // get the actual account 2 instance
-
-		log.Println("a1 = ", a1)
-		log.Println("a2 = ", a2)
-
-		a1.Amt = a1.Amt + 100 // deposit 100
-		a2.Amt = a2.Amt - 100 // withdraw 100
-
-		log.Println("After a1 = ", a1)
-		log.Println("After a2 = ", a2)
-
-		return t.Write(acc1, a1) && t.Write(acc2, a2)
-	})
-
-	t.Execute()
-
-	var k int
-	fmt.Scan(&k)
-
-	tLog := STM.NewTransaction(func(t *stm.Transaction) bool {
-
-		log.Println("TLog :: acc1 = ", t.Read(acc1).(account.Account))
-		log.Println("TLog :: acc2 = ", t.Read(acc2).(account.Account))
-
-		return true
-	})
-
-	tLog.Execute()
-
-	fmt.Scan(&k)
+// releaseCommitLock releases the lock on the commit lock of this STM.
+func (stm *STM) releaseCommitLock() {
+	stm.commitLock.Unlock()
 }

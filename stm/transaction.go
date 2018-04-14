@@ -32,70 +32,70 @@
 // transaction.go
 // @author Sidharth Mishra
 // @created Fri Mar 30 2018 19:37:11 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 19:37:16 GMT-0700 (PDT)
+// @last-modified Thu Apr 12 2018 23:37:14 GMT-0700 (PDT)
 //
 
 package stm
 
 // Transaction is the only way to modify the memory cells in the STM.
 type Transaction struct {
-	Version         int                     // version of the transaction
-	IsComplete      bool                    // flag showing if the transaction is running or is complete
-	Action          func(*Transaction) bool // the action that this transaction executes
-	readQuarantine  map[*memoryCell]Any     // the read quarantine
-	writeQuarantine map[*memoryCell]Any     // the write quarantine
+	version         int                     // version of the transaction
+	isComplete      bool                    // flag showing if the transaction is running or is complete
+	action          func(*Transaction) bool // the action that this transaction executes
+	readQuarantine  map[*memoryCell]Value   // the read quarantine
+	writeQuarantine map[*memoryCell]Value   // the write quarantine
 	stm             *STM                    // the reference to the STM this transaction intends to modify
 }
 
 // Reads the contents of the memory cell referenced by the `tVar`.
-func (t *Transaction) Read(tVar TVar) Any {
+func (t *Transaction) Read(tVar TVar) Value {
 	memCell := tVar.(*memoryCell)
 	val := t.readQuarantine[memCell]
 	if val == nil {
 		val = memCell.read()
 		t.readQuarantine[memCell] = val
 	}
-	return val
+	return val.MakeCopy()
 }
 
 // Writes the new Data into the write quarantine. This will be flushed into the STM upon
 // successful commit.
-func (t *Transaction) Write(tVar TVar, newData Any) bool {
+func (t *Transaction) Write(tVar TVar, newData Value) bool {
 	memCell := tVar.(*memoryCell)
 	t.writeQuarantine[memCell] = newData
 	return true
 }
 
 // Execute executes this transaction as another thread.
-func (t *Transaction) Execute() {
+func (t *Transaction) execute() {
 	go t.run()
 }
 
 // The actual execution logic of the transaction.
 func (t *Transaction) run() {
-	t.IsComplete = false
-	for !t.IsComplete {
-		if status := t.Action(t); !status {
+	t.isComplete = false
+	for !t.isComplete {
+		if status := t.action(t); !status {
 			// failed to execute the action
-			t.IsComplete = false
+			t.isComplete = false
 			t.rollback()
 			continue
 		}
 		if status := t.commit(); !status {
 			// failed to commit
-			t.IsComplete = false
+			t.isComplete = false
 			t.rollback()
 			continue
 		}
-		t.IsComplete = true
+		t.isComplete = true
 	}
-	t.Version++
+	t.version++
 }
 
 // rollback the transaction to the initial state so that it can retry.
 func (t *Transaction) rollback() {
-	t.readQuarantine = make(map[*memoryCell]Any)
-	t.writeQuarantine = make(map[*memoryCell]Any)
+	t.readQuarantine = make(map[*memoryCell]Value)
+	t.writeQuarantine = make(map[*memoryCell]Value)
 }
 
 // commit the write quarantine memory cells into the STM.
@@ -106,7 +106,7 @@ func (t *Transaction) commit() bool {
 	failCount := 0
 	for memCell, value := range t.readQuarantine {
 		currVal := memCell.read()
-		if !currVal.Equals(value) {
+		if !currVal.IsEqual(value) {
 			// data has changed by other transaction
 			// commit has failed
 			failCount++

@@ -32,12 +32,13 @@
 // stm.go
 // @author Sidharth Mishra
 // @created Thu Mar 29 2018 00:22:14 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 18:08:53 GMT-0700 (PDT)
+// @last-modified Sat Apr 14 2018 11:00:55 GMT-0700 (PDT)
 //
 
 package stm
 
 import (
+	"log"
 	"sync"
 )
 
@@ -57,20 +58,28 @@ func New() (stm *STM) {
 
 // NewTVar creates a new memory cell in the STM and returns the reference
 // to the memory cell as a TVar instance.
-func (stm *STM) NewTVar(data Any) TVar {
+func (stm *STM) NewTVar(data Value) TVar {
 	memCell := newMemCell(data)
 	stm.memory = append(stm.memory, memCell)
 	return TVar(memCell)
 }
 
-// NewTransaction makes a new transaction for the given action.
-func (stm *STM) NewTransaction(action func(*Transaction) bool) *Transaction {
+// Perform accepts the transactional actions submitted to the STM and performs them.
+func (stm *STM) Perform(actions ...func(*Transaction) bool) {
+	for _, action := range actions {
+		t := newTransaction(stm, action)
+		t.execute()
+	}
+}
+
+// newTransaction makes a new transaction for the given action.
+func newTransaction(stm *STM, action func(*Transaction) bool) *Transaction {
 	t := new(Transaction)
-	t.Version = 0
-	t.IsComplete = false
-	t.Action = action
-	t.readQuarantine = make(map[*memoryCell]Any)
-	t.writeQuarantine = make(map[*memoryCell]Any)
+	t.version = 0
+	t.isComplete = false
+	t.action = action
+	t.readQuarantine = make(map[*memoryCell]Value)
+	t.writeQuarantine = make(map[*memoryCell]Value)
 	t.stm = stm
 	return t
 }
@@ -83,4 +92,13 @@ func (stm *STM) acquireCommitLock() {
 // releaseCommitLock releases the lock on the commit lock of this STM.
 func (stm *STM) releaseCommitLock() {
 	stm.commitLock.Unlock()
+}
+
+// PrintState prints the current state of all the memory cells -- just a snapshot
+func (stm *STM) PrintState() {
+	log.Println("------- State of the STM -------- ")
+	for _, memCell := range stm.memory {
+		log.Println(memCell.toString())
+	}
+	log.Println("------- END -------- ")
 }

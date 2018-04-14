@@ -32,7 +32,7 @@
 // memorycell.go
 // @author Sidharth Mishra
 // @created Thu Mar 29 2018 00:23:26 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 18:07:55 GMT-0700 (PDT)
+// @last-modified Sat Apr 14 2018 11:02:56 GMT-0700 (PDT)
 //
 
 package stm
@@ -47,12 +47,12 @@ import (
 // memoryCell represents a memory cell where the data is stored.
 type memoryCell struct {
 	id          string        // The unique identity of the memory cell. Helps in getting it hashed
-	data        Any           // The contents of the memory cell.
+	data        Value         // The contents of the memory cell.
 	memCellLock *sync.RWMutex // A read-write lock for obtaining more granular locking.
 }
 
 // newMemCell is a memory cell constructor. It creates and initializes a new memory cell.
-func newMemCell(data Any) (memCell *memoryCell) {
+func newMemCell(data Value) (memCell *memoryCell) {
 	memCell = new(memoryCell)
 	memCell.id = uuid.NewV4().String() // generates a new v4 UUID string for ID
 	memCell.data = data
@@ -62,15 +62,15 @@ func newMemCell(data Any) (memCell *memoryCell) {
 
 // read the data contained in the memory cell.
 // First acquire a read lock on the memory cell and then read the contents.
-func (memCell *memoryCell) read() Any {
+func (memCell *memoryCell) read() Value {
 	memCell.memCellLock.RLock()         // acquire the read lock on the memCell
 	defer memCell.memCellLock.RUnlock() // defer the unlock of the memCell lock
-	return memCell.data                 // return the copy of the data
+	return memCell.data.MakeCopy()      // return the copy of the data
 }
 
 // write the newData into the memory cell updating the contents of the memory cell.
 // First acquire a write lock and then update the contents.
-func (memCell *memoryCell) write(newData Any) {
+func (memCell *memoryCell) write(newData Value) {
 	memCell.memCellLock.Lock()         // acquire the write lock on the memCell
 	defer memCell.memCellLock.Unlock() // defer the release of the memCell lock
 	memCell.data = newData             // update the contents of the memory cell
@@ -78,5 +78,6 @@ func (memCell *memoryCell) write(newData Any) {
 
 // toString gives back a string representation of the memory cell instance.
 func (memCell *memoryCell) toString() string {
-	return fmt.Sprintf("MemoryCell#(%s)", memCell.id)
+	// return fmt.Sprintf("MemoryCell#(%s)", memCell.id)
+	return fmt.Sprintf(`{"id": %v, "data": %v}`, memCell.id, memCell.data)
 }

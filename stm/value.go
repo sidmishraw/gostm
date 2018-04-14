@@ -32,13 +32,16 @@
 // value.go
 // @author Sidharth Mishra
 // @created Thu Mar 29 2018 00:29:09 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 18:18:24 GMT-0700 (PDT)
+// @last-modified Thu Apr 12 2018 23:30:40 GMT-0700 (PDT)
 //
 
 package stm
 
-// Any is any value that can be stored in a memory cell.
-type Any interface {
-	// Equals checks for the equality between two values.
-	Equals(other Any) bool
+// Value is any value that can be stored in a memory cell.
+// Value can be stored in the STM.
+type Value interface {
+	// MakeCopy makes a deep copy of the Value.
+	MakeCopy() Value
+	// IsEqual checks for the equality between two values.
+	IsEqual(other Value) bool
 }

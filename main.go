@@ -32,14 +32,13 @@
 // main.go
 // @author Sidharth Mishra
 // @created Thu Mar 29 2018 00:21:30 GMT-0700 (PDT)
-// @last-modified Mon Apr 02 2018 19:53:37 GMT-0700 (PDT)
+// @last-modified Sat Apr 14 2018 10:55:53 GMT-0700 (PDT)
 //
 
 package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/sidmishraw/gostm/account"
 	"github.com/sidmishraw/gostm/stm"
@@ -48,85 +47,21 @@ import (
 func main() {
 	STM := stm.New()
 
-	acc1 := STM.NewTVar(account.NewAccount("account1", 100))
-	acc2 := STM.NewTVar(account.NewAccount("account2", 500))
+	acc1 := account.NewAccount("account1", 100, STM)
+	acc2 := account.NewAccount("account1", 500, STM)
 
 	// 1st transaction that transfers 100 from account2 to account1
-	t := STM.NewTransaction(func(t *stm.Transaction) bool {
-		log.Println("Started execution of action ...")
-		defer log.Println("Finished execution action ...")
-
-		tacc1 := t.Read(acc1)
-		tacc2 := t.Read(acc2)
-
-		log.Println("tacc1 = ", tacc1)
-		log.Println("tacc2 = ", tacc2)
-
-		a1 := tacc1.(account.Account) // get the actual account 1 instance
-		a2 := tacc2.(account.Account) // get the actual account 2 instance
-
-		log.Println("a1 = ", a1)
-		log.Println("a2 = ", a2)
-
-		a1.Amt = a1.Amt + 100 // deposit 100
-		a2.Amt = a2.Amt - 100 // withdraw 100
-
-		log.Println("After a1 = ", a1)
-		log.Println("After a2 = ", a2)
-
-		return t.Write(acc1, a1) && t.Write(acc2, a2)
-	})
+	//
+	acc2.Transfer(acc1, 100)
 
 	// 2nd transaction that transfers 10 from account1 to account2
-	tt := STM.NewTransaction(func(t *stm.Transaction) bool {
-		log.Println("Started execution of action ...")
-		defer log.Println("Finished execution action ...")
-
-		tacc1 := t.Read(acc1)
-		tacc2 := t.Read(acc2)
-
-		log.Println("tacc1 = ", tacc1)
-		log.Println("tacc2 = ", tacc2)
-
-		a1 := tacc1.(account.Account) // get the actual account 1 instance
-		a2 := tacc2.(account.Account) // get the actual account 2 instance
-
-		log.Println("a1 = ", a1)
-		log.Println("a2 = ", a2)
-
-		a1.Amt = a1.Amt - 10 // withdraw 10
-		a2.Amt = a2.Amt + 10 // deposit 10
-
-		log.Println("After a1 = ", a1)
-		log.Println("After a2 = ", a2)
-
-		return t.Write(acc1, a1) && t.Write(acc2, a2)
-	})
-
-	t.Execute()
-	tt.Execute()
+	//
+	acc1.Transfer(acc2, 10)
 
 	var k int
 	fmt.Scan(&k)
 
 	// final consistent state is going to be [190, 410].
-	tLog := STM.NewTransaction(func(t *stm.Transaction) bool {
-
-		if bal1 := t.Read(acc1).(account.Account); bal1.Amt != 190 {
-			log.Println("Failed consistency test")
-		}
-
-		if bal2 := t.Read(acc2).(account.Account); bal2.Amt != 410 {
-			log.Println("Failed consistency test")
-		}
-
-		log.Println("Acc1 = ", t.Read(acc1))
-		log.Println("Acc2 = ", t.Read(acc2))
-
-		return true
-	})
-
-	tLog.Execute()
-
-	fmt.Scan(&k)
+	//
+	STM.PrintState()
 }

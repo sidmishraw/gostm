@@ -32,7 +32,7 @@
 // main.go
 // @author Sidharth Mishra
 // @created Thu Mar 29 2018 00:21:30 GMT-0700 (PDT)
-// @last-modified Sat Apr 14 2018 10:55:53 GMT-0700 (PDT)
+// @last-modified Thu Apr 19 2018 12:50:58 GMT-0700 (PDT)
 //
 
 package main
@@ -49,6 +49,10 @@ func main() {
 
 	acc1 := account.NewAccount("account1", 100, STM)
 	acc2 := account.NewAccount("account1", 500, STM)
+
+	// Initial state of the STM [100, 500].
+	//
+	STM.PrintState()
 
 	// 1st transaction that transfers 100 from account2 to account1
 	//
